@@ -30,6 +30,9 @@ public class UdpClient {
     private StringBuilder stringBuilder = new StringBuilder();
     private DatagramSocket datagramSocket;
 
+    private static final int RETRY_TIMES = 3;
+    private int retry = 0;
+
     public void createClient(String request) {
         command = request;
         try {
@@ -81,7 +84,14 @@ public class UdpClient {
                 sendAck(index);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            if (retry++ < RETRY_TIMES) {
+                System.out.println("retry " + retry + " time" + ", command is " + command);
+                sendRequest(command);
+                return true;
+            } else {
+                System.out.println("Sorry, time out!");
+                return false;
+            }
         }
 
         return true;
