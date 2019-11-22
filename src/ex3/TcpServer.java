@@ -16,9 +16,14 @@ public class TcpServer {
     private static final String COMMAND_INDEX = "index";
     private static final String RESPONSE_OK = "OK";
     private static final String RESPONSE_ERROR = "ERROR";
-    private static final String SERVER_PATH = "src/ex3";
+
+    private static String serverPath;
 
     public static void main(String[] args) {
+        if (args != null && args.length > 0) {
+            serverPath = args[0];
+        }
+
         ServerSocket serverSocket;
         TcpServer server = new TcpServer();
 
@@ -49,7 +54,7 @@ public class TcpServer {
         System.out.println("Server received command : " + request);
 
         if (COMMAND_INDEX.equals(request)) {
-            File dir = new File(SERVER_PATH);
+            File dir = new File(serverPath);
 
             if (dir.exists()) {
                 StringBuilder stringBuilder = new StringBuilder();
@@ -60,8 +65,8 @@ public class TcpServer {
                 sendResponse(client, stringBuilder.toString());
             }
         } else {
-            String fileName = "./" + request;
-            File file = new File(request);
+            String fileName = serverPath + request;
+            File file = new File(fileName);
 
             if (file.exists()) {
                 try {

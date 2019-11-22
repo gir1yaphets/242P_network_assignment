@@ -84,11 +84,10 @@ public class UdpServer {
                 sendPacket(packet);
             }
         } else {
-            String fileName = "./" + serverPath + "/" + request;
+            String fileName = serverPath + request;
             File file = new File(fileName);
 
             if (file.exists() && !file.isDirectory()) {
-                System.out.println("file exist");
                 StringBuilder sb = new StringBuilder();
                 sb.append(RESPONSE_OK).append("\n");
                 try {
