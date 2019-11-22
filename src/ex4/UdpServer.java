@@ -15,13 +15,22 @@ public class UdpServer {
     private static final int PORT = 8080;
     private static final int MAX_LENGTH = 1024;
 
-    private static final String COMMAND_INDEX = "index";
+    public static final String COMMAND_INDEX = "index";
+    public static final String COMMAND_ACK = "ack";
+    public static final String COMMAND_SYNC = "sync";
     private static final String RESPONSE_OK = "OK";
     private static final String RESPONSE_ERROR = "ERROR";
 
-    private static final String SERVER_PATH = "src/ex3";
+    private static String serverPath;
+    private byte[] data;
+    private int index = 0;
+    private int packetNum = 0;
 
     public static void main(String[] args) {
+        if (args != null && args.length > 0) {
+            serverPath = args[0];
+        }
+
         UdpServer udpServer = new UdpServer();
         udpServer.serverStart();
     }
@@ -44,11 +53,13 @@ public class UdpServer {
     }
 
     private void proceedRequest(DatagramPacket packet) {
-        String respond = "";
+        String respond;
         String request = new String(packet.getData(), 0 , packet.getLength());
 
+        System.out.println("request = " + request);
+
         if (COMMAND_INDEX.equals(request)) {
-            File dir = new File(SERVER_PATH);
+            File dir = new File(serverPath);
 
             if (dir.exists()) {
                 StringBuilder stringBuilder = new StringBuilder();
@@ -58,39 +69,41 @@ public class UdpServer {
                 }
 
                 respond = stringBuilder.toString();
+                packet.setData(respond.getBytes());
+                sendResponse(packet);
+            }
+        } else if (request.startsWith(COMMAND_ACK)) {
+            String[] ack = request.split(",");
+            int requestIndex = Integer.valueOf(ack[1]);
+
+            System.out.println("ACK index = " + index);
+            if (requestIndex == index) {
+                index += 1;
+
+                sendSync(packet);
+                sendPacket(packet);
             }
         } else {
-            String fileName = "./" + request;
+            String fileName = "./" + serverPath + "/" + request;
             File file = new File(fileName);
 
-            if (file.exists()) {
+            if (file.exists() && !file.isDirectory()) {
+                System.out.println("file exist");
                 StringBuilder sb = new StringBuilder();
                 sb.append(RESPONSE_OK).append("\n");
                 try {
-                    BufferedReader reader = new BufferedReader(new FileReader(fileName));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        sb.append(line);
-                    }
-
-                    respond = sb.toString();
+                    String content = getFileContent(fileName);
+                    setDataPacketNum(content);
+                    index = -1;
+                    sendSync(packet);
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
-                    respond = RESPONSE_ERROR;
                 } catch (IOException e) {
                     e.printStackTrace();
-                    respond = RESPONSE_ERROR;
                 }
-            } else {
-                respond = RESPONSE_ERROR;
             }
         }
-
-        packet.setData(respond.getBytes());
-        packetData(respond);
-        sendResponse(packet);
     }
-
 
     private void receiveRequest(DatagramPacket packet) {
         try {
@@ -100,47 +113,72 @@ public class UdpServer {
         }
     }
 
+    private String getFileContent(String fileName) throws FileNotFoundException, IOException {
+        System.out.println("getFileContent fileName = " + fileName);
+        StringBuilder sb = new StringBuilder();
+        BufferedReader reader;
+        String content = "" ;
+        try {
+            reader = new BufferedReader(new FileReader(fileName));
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+
+            content = sb.toString();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return content;
+    }
+
+    private void setDataPacketNum(String content) {
+        data = content.getBytes();
+        packetNum = (data.length % MAX_LENGTH == 0) ? data.length / MAX_LENGTH : data.length / MAX_LENGTH + 1;
+    }
+
+    private void sendSync(DatagramPacket packet) {
+        String sync;
+
+        if (index == packetNum - 1) {
+            sync = COMMAND_SYNC + "," + Integer.MIN_VALUE;
+        } else {
+            sync = COMMAND_SYNC + "," + index;
+        }
+        byte[] syncBytes = sync.getBytes();
+        packet.setData(syncBytes);
+        sendResponse(packet);
+    }
+
+    private void sendPacket(DatagramPacket packet) {
+        if (index < packetNum && index != Integer.MIN_VALUE) {
+            int start = index * MAX_LENGTH;
+            byte[] sendBuff;
+
+            int remain = data.length - index * MAX_LENGTH;
+
+            if (remain > MAX_LENGTH) {
+                sendBuff = new byte[MAX_LENGTH];
+                System.arraycopy(data, start, sendBuff, 0, MAX_LENGTH);
+            } else {
+                sendBuff = new byte[remain];
+                System.arraycopy(data, start, sendBuff, 0, remain);
+            }
+
+            packet.setData(sendBuff);
+            sendResponse(packet);
+        }
+    }
+
     private void sendResponse(DatagramPacket packet) {
         try {
             datagramSocket.send(packet);
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private byte[] packetData(String data) {
-        byte[] before = data.getBytes();
-
-        int originalPacket = getPacketNum(before.length);
-
-        int finalLength = before.length + originalPacket * 8;
-        int finalPacket = getPacketNum(finalLength);
-
-        byte[] after = new byte[finalPacket];
-
-        int len = 0, index = 0;
-        StringBuilder stringBuilder = new StringBuilder();
-        for (char c : data.toCharArray()) {
-            if (len == 0) {
-                stringBuilder.append(finalPacket);
-                stringBuilder.append(index);
-                stringBuilder.append(c);
-                len += 10;
-            } else if (len ==  MAX_LENGTH) {
-                index++;
-                len = 0;
-            } else {
-                stringBuilder.append(c);
-                len += 2;
-            }
-        }
-
-        System.out.println(stringBuilder.toString());
-
-        return after;
-    }
-
-    private int getPacketNum(int length) {
-        return (length % MAX_LENGTH == 0) ? length / MAX_LENGTH : length / MAX_LENGTH + 1;
     }
 }
