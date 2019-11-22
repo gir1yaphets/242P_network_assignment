@@ -18,8 +18,8 @@ public class UdpServer {
     public static final String COMMAND_INDEX = "index";
     public static final String COMMAND_ACK = "ack";
     public static final String COMMAND_SYNC = "sync";
-    private static final String RESPONSE_OK = "OK";
-    private static final String RESPONSE_ERROR = "ERROR";
+    public static final String RESPONSE_OK = "OK";
+    public static final String RESPONSE_ERROR = "ERROR";
 
     private static String serverPath;
     private byte[] data;
@@ -58,7 +58,7 @@ public class UdpServer {
 
         System.out.println("request = " + request);
 
-        if (COMMAND_INDEX.equals(request)) {
+        if (COMMAND_INDEX.equalsIgnoreCase(request)) {
             File dir = new File(serverPath);
 
             if (dir.exists()) {
@@ -88,18 +88,21 @@ public class UdpServer {
             File file = new File(fileName);
 
             if (file.exists() && !file.isDirectory()) {
-                StringBuilder sb = new StringBuilder();
-                sb.append(RESPONSE_OK).append("\n");
                 try {
                     String content = getFileContent(fileName);
                     setDataPacketNum(content);
+                    sendResult(true, packet);
                     index = -1;
                     sendSync(packet);
                 } catch (FileNotFoundException e) {
+                    sendResult(false, packet);
                     e.printStackTrace();
                 } catch (IOException e) {
+                    sendResult(false, packet);
                     e.printStackTrace();
                 }
+            } else {
+                sendResult(false, packet);
             }
         }
     }
@@ -138,6 +141,14 @@ public class UdpServer {
     private void setDataPacketNum(String content) {
         data = content.getBytes();
         packetNum = (data.length % MAX_LENGTH == 0) ? data.length / MAX_LENGTH : data.length / MAX_LENGTH + 1;
+    }
+
+    private void sendResult(boolean fileExist, DatagramPacket packet) {
+        String result = fileExist ? RESPONSE_OK : RESPONSE_ERROR;
+
+        byte[] data = result.getBytes();
+        packet.setData(data);
+        sendResponse(packet);
     }
 
     private void sendSync(DatagramPacket packet) {

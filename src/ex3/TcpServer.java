@@ -105,7 +105,7 @@ public class TcpServer {
         try {
             printWriter = new PrintWriter(client.getOutputStream());
 
-            printWriter.println(RESPONSE_OK);
+            printWriter.println(RESPONSE_OK + "\r\n");
             String line;
 
             while ((line = reader.readLine()) != null) {

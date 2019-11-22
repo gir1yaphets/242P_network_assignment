@@ -1,6 +1,7 @@
 package ex2;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -14,6 +15,7 @@ public class Exercise2 {
     }
 
     private int readFile(String fileName) {
+        File file = new File(fileName);
         int lineNum = 0;
         try {
             BufferedReader reader = new BufferedReader(new FileReader(fileName));
@@ -22,10 +24,11 @@ public class Exercise2 {
                 lineNum++;
             }
 
-            System.out.println("File "  + fileName + " line number is " + lineNum);
+
+            System.out.println("File "  + file.getName() + " line number is " + lineNum);
             reader.close();
         } catch (IOException e) {
-            System.out.println("The file you input does not exist. Please input a valid file name");
+            System.out.println("The file <" + file.getName() + " > does not exist. Please input a valid file name");
         }
 
         return lineNum;

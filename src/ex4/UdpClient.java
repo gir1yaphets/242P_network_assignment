@@ -9,11 +9,14 @@ import java.util.Scanner;
 
 import static ex4.UdpServer.COMMAND_ACK;
 import static ex4.UdpServer.COMMAND_INDEX;
+import static ex4.UdpServer.RESPONSE_ERROR;
+import static ex4.UdpServer.RESPONSE_OK;
 
 public class UdpClient {
     public static void main(String[] args) {
         UdpClient client = new UdpClient();
         Scanner scanner = new Scanner(System.in);
+        System.out.println("Please input a command :");
 
         while (true) {
             String cmd = scanner.nextLine();
@@ -42,7 +45,6 @@ public class UdpClient {
             sendRequest(request);
             while (true) {
                 if (!proceedResponse()) {
-                    System.out.println("final result = " + stringBuilder.toString());
                     break;
                 }
 
@@ -74,10 +76,16 @@ public class UdpClient {
                     stringBuilder = new StringBuilder();
                     sendAck(index);
                 }
+            } else if (response.equals(RESPONSE_OK)) {
+                System.out.println("OK!");
+            } else if (response.equals(RESPONSE_ERROR)) {
+                System.out.println("Sorry, the file you input does not exist!");
+                return false;
             } else {
                 stringBuilder.append(response);
 
                 if (index == Integer.MIN_VALUE) {
+                    System.out.println("final result = " + stringBuilder.toString());
                     return false;
                 }
 
